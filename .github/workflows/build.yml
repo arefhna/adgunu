@@ -1,0 +1,49 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.24.0
+          cache: true
+
+      - name: Generate android folder
+        run: |
+          if [ ! -d "android" ]; then
+            flutter create --platforms=android --org az.adgunu --project-name adgunu .
+          fi
+
+      - name: Copy root icon to assets
+        run: |
+          mkdir -p assets/icon
+          if [ -f icon.png ]; then cp icon.png assets/icon/app_icon.png; fi
+
+      - run: flutter pub get
+
+      - name: Generate launcher icons
+        run: |
+          if [ -f assets/icon/app_icon.png ]; then
+            flutter pub run flutter_launcher_icons
+          fi
+
+      - run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adgunu-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
